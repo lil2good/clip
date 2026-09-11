@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.tuxclaw.clip",
+  "name": "Omarchy Clip",
+  "version": "1.0.0",
+  "author": "Tuxclaw / Tails",
+  "description": "Native clipboard picker with filters, pins and rich previews.",
+  "kinds": ["overlay"],
+  "entryPoints": { "overlay": "Overlay.qml" },
+  "keepLoaded": true
+}
