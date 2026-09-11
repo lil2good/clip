@@ -221,7 +221,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
           }
           Text {
-            width: parent.width - x
+            width: parent.width - x - clearButton.width - root.gap
             textFormat: Text.PlainText
             text: root.filterText || "Type to search clipboard…"
             color: root.foreground
@@ -230,6 +230,24 @@ Item {
             font.pixelSize: Style.font.heading
             elide: Text.ElideRight
             anchors.verticalCenter: parent.verticalCenter
+          }
+          Rectangle {
+            id: clearButton
+            width: Style.space(106)
+            height: Style.space(30)
+            anchors.verticalCenter: parent.verticalCenter
+            enabled: root.history.length > 0 && !root.historyError && !storage.running
+            opacity: enabled ? 1 : 0.4
+            radius: Style.cornerRadius
+            color: "transparent"
+            Text {
+              anchors.centerIn: parent
+              text: "Clear all"
+              color: root.selectedText
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+            }
+            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.requestClear() }
           }
         }
         Row {

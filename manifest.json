@@ -5,7 +5,13 @@
   "version": "1.0.0",
   "author": "Tuxclaw / Tails",
   "description": "Native clipboard picker with filters, pins and rich previews.",
-  "kinds": ["overlay"],
-  "entryPoints": { "overlay": "Overlay.qml" },
+  "kinds": ["overlay", "bar-widget"],
+  "entryPoints": { "overlay": "Overlay.qml", "barWidget": "BarWidget.qml" },
+  "barWidget": {
+    "displayName": "Clip",
+    "description": "Open clipboard history",
+    "category": "Utility",
+    "allowMultiple": false
+  },
   "keepLoaded": true
 }

@@ -43,3 +43,10 @@ Install:
 - Drop-in: `~/.config/omarchy/plugins/io.github.tuxclaw.clip/`
 - `omarchy plugin validate`, `omarchy-shell shell rescanPlugins`, `omarchy plugin enable io.github.tuxclaw.clip --yes`
 - Branch `andy/clip-overlay`; never push `main`
+
+## [2026-09-10] Clear-all + launchers
+**By:** Sonic
+**Context:** Tux: looks beautiful; add a clear all button, a bar launcher, and an installed-apps launcher.
+**Decision:** Keep overlay. Add a visible Clear all control that calls existing `requestClear()`. Add `bar-widget` kind (WidgetButton, clipboard glyph) and `omarchy bar put` into Familiar's hosted right `omarchyWidgets` via shell.json. Add `~/.local/share/applications/io.github.tuxclaw.clip.desktop`. Do not edit Familiar.
+**Alternatives considered:** Editing Familiar profile item lists (rejected). Separate tray applet (rejected).
+**Status:** Active

@@ -2,7 +2,9 @@
 
 A native Omarchy shell overlay: searchable clipboard history, All / Text / Images / Files / Pins filters, and a split preview with scrollable text, fitted images and hex color swatches. Uses the active menu theme.
 
-Toggle with **Super+Shift+V** or `omarchy-shell shell toggle io.github.tuxclaw.clip`.
+Toggle with **Super+Shift+V**, the **Clip** clipboard button in the bar, **Clip** in the installed-apps launcher, or `omarchy-shell shell toggle io.github.tuxclaw.clip`.
+
+The header's **Clear all** button uses the same confirmation as Shift+Delete and is disabled when history is empty or unavailable, or a save is in progress.
 
 | Input | Action |
 |---|---|
@@ -21,7 +23,9 @@ History is watched through a read-only FileView at `~/.local/state/omarchy/clipb
 
 Pins are content identities in `~/.local/state/omarchy/clip-pins.json` (mode 0600). They survive reorder and restart, but do not extend stock history retention. Deleted or evicted entries disappear from Pins; copying identical content later restores its pin. Images remain owned by stock Omarchy. No remote preview requests are made. Preview text is capped at 64K characters; paste/copy uses the full stock entry. Type chips are heuristics. Files includes file URIs and absolute/home-relative paths.
 
-Requires the installed Omarchy shell, Python 3 and existing `omarchy-clipboard-*` helpers. Run `python3 install.py` from this repo in the desktop session to validate, install, enable, configure the shortcut/layer rule and collect evidence in `.context/validation.md`. It backs up changed user files and verifies the original two stock watchers, stock clipboard enablement and shortcut, Clip's namespace, and open/close IPC. It does not restart the shell.
+Requires the installed Omarchy shell, Python 3 and existing `omarchy-clipboard-*` helpers. Run `python3 install.py` from this repo in the desktop session to validate, install, enable if needed, configure the shortcut/layer rule and collect evidence in `.context/validation.md`. Existing Clip bindings are left in place. It backs up changed user files and verifies the original two stock watchers, stock clipboard enablement and shortcut, Clip's namespace, and open/close IPC. It does not restart the shell.
+
+The installer copies `BarWidget.qml` and `assets/` along with the overlay, adds Clip to `bar.layout.right` before `omarchy.tray` (falling back to index 0), and rescans plugins. Familiar hosts this layout through `omarchyWidgets`; no Familiar source changes are needed. It installs `assets/io.github.tuxclaw.clip.desktop` to `~/.local/share/applications/` and `assets/clip.svg` to `~/.local/share/icons/hicolor/scalable/apps/io.github.tuxclaw.clip.svg`. Desktop validation and icon/application cache refreshes run when their tools are available.
 
 Development checks:
 

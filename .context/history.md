@@ -19,3 +19,10 @@
 **Changes:** `omarchy plugin enable` has no `--yes`. Enabled plugin, bound Super+Shift+V, added `omarchy-clip` layer rule. Live toggle opened 34 entries; stock clipboard still enabled; watchers still stock capture.sh.
 **Files:** `~/.config/omarchy/plugins/io.github.tuxclaw.clip/`, `~/.config/hypr/bindings.lua`
 **Commit:** pending
+
+## [2026-09-10] Clear all and launchers prepared; live installation blocked
+**Agent:** Tails
+**Branch:** `andy/clip-overlay`
+**Changes:** Added a visible header Clear all button using Pin's chrome and existing requestClear/ConfirmDialog; disabled for empty/unavailable history and pending saves. Shift+Delete is unchanged. Added overlay+bar-widget manifest, stock WidgetButton clipboard glyph and Clip tooltip, desktop launcher and monochrome SVG. Installer now ships the new files/assets, skips enable when already enabled, drops unsupported --yes, places Clip before the right tray with index-0 fallback, installs desktop/icon and refreshes available caches. Existing Hyprland bindings are not reloaded or changed on repeat install.
+**Validation:** Repository manifest, both QML syntax checks, desktop-file-validate, 5 storage tests and 8 JS checks passed. Live installer execution was rejected by the approval system (reported as "rejected by user"); it did not run. Live acceptance for Clear all, Familiar button, app list and watcher identity remains pending. No installed plugin, Familiar, packaged Omarchy, Hyprland or capture watcher changes were made in this turn.
+**Commit:** Blocked: elevated git add/commit was also rejected by the approval system (reported as "rejected by user"). Changes remain in the working tree on `andy/clip-overlay`; the pre-existing decisions.md edit was preserved. No push.

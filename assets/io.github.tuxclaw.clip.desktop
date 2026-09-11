@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Clip
+Comment=Clipboard history
+Exec=omarchy-shell shell toggle io.github.tuxclaw.clip
+Icon=io.github.tuxclaw.clip
+Categories=Utility;
+Terminal=false
+StartupNotify=false
