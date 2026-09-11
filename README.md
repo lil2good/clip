@@ -2,6 +2,31 @@
 
 A native Omarchy shell overlay: searchable clipboard history, All / Text / Images / Files / Pins filters, and a split preview with scrollable text, fitted images and hex color swatches. Uses the active menu theme.
 
+Plugin id: `io.github.tuxclaw.clip` (kinds `overlay`, `bar-widget`). MIT. Does not replace stock `omarchy.clipboard` capture.
+
+## Install
+
+```sh
+omarchy plugin add https://github.com/tuxclaw/clip.git --enable --yes
+omarchy bar put io.github.tuxclaw.clip --section right --before omarchy.tray
+```
+
+Optional Super+Shift+V in `~/.config/hypr/bindings.lua`:
+
+```lua
+o.bind("SUPER + SHIFT + V", "Omarchy Clip", "omarchy-shell shell toggle io.github.tuxclaw.clip")
+hl.layer_rule({ match = { namespace = "^omarchy-clip$" }, no_anim = true, animation = "none" })
+```
+
+## Remove
+
+```sh
+omarchy plugin disable io.github.tuxclaw.clip
+omarchy plugin remove io.github.tuxclaw.clip --yes
+```
+
+Stock clipboard, Super+Ctrl+V, and the `wl-paste` watchers stay.
+
 Toggle with **Super+Shift+V**, the **Clip** clipboard button in the bar, **Clip** in the installed-apps launcher, or `omarchy-shell shell toggle io.github.tuxclaw.clip`.
 
 The header's **Clear all** button uses the same confirmation as Shift+Delete and is disabled when history is empty or unavailable, or a save is in progress.
