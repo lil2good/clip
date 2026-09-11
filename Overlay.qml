@@ -22,7 +22,7 @@ Item {
   property string historyError: ""
   property string pinsError: ""
   property string pendingPayload: ""
-  readonly property string statePath: Quickshell.env("HOME") + "/.local/state/omarchy/"
+  property bool reloadPending: false
   readonly property var activeRow: rows.length ? rows[Math.min(selectedIndex, rows.length - 1)] : null
   readonly property string fontFamily: Style.font.menuFamily
   readonly property int gap: Style.spacing.md
@@ -38,8 +38,7 @@ Item {
     category = ["All", "Text", "Images", "Files", "Pins"].indexOf(payload.filter) >= 0 ? payload.filter : "All"
     selectedIndex = 0
     errorMessage = ""
-    historyFile.reload()
-    pinsFile.reload()
+    reloadState()
     rebuild(false)
     opened = true
     Qt.callLater(function() { keyCatcher.forceActiveFocus(); pointerGate.reset() })
@@ -105,34 +104,39 @@ Item {
     confirmation.opened = true
   }
 
-  FileView {
-    id: historyFile
-    path: root.statePath + "clipboard-history.json"
-    watchChanges: true
-    printErrors: false
-    onFileChanged: reload()
-    onLoaded: {
-      try { root.history = Clip.parse(text()); root.historyError = ""; root.rebuild(true) }
-      catch (_) { root.historyError = "Could not read clipboard history" }
-    }
-    onLoadFailed: { root.history = []; root.historyError = "Clipboard history is unavailable"; root.rebuild(false) }
+  function reloadState() {
+    if (stateDump.running || storage.running) { reloadPending = true; return }
+    reloadPending = false
+    stateDump.running = true
   }
-  FileView {
-    id: pinsFile
-    path: root.statePath + "clip-pins.json"
-    watchChanges: true
-    printErrors: false
-    onFileChanged: reload()
-    onLoaded: {
+  Timer {
+    interval: 1000
+    repeat: true
+    running: root.opened
+    onTriggered: root.reloadState()
+  }
+  Process {
+    id: stateDump
+    command: ["python3", decodeURIComponent(Qt.resolvedUrl("storage.py").toString().substring(7)), "dump"]
+    stdout: StdioCollector { id: stateOutput }
+    stderr: StdioCollector { id: stateErrors }
+    onExited: function(code) {
       try {
-        var values = JSON.parse(text())
-        if (!Array.isArray(values) || !values.every(function(value) { return typeof value === "string" })) throw new Error("Invalid pins")
-        root.pins = values
+        if (code !== 0) throw new Error(stateErrors.text.trim() || "Could not read clipboard state")
+        var values = JSON.parse(stateOutput.text)
+        root.history = Clip.parse(JSON.stringify(values.history))
+        root.pins = values.pins
+        root.historyError = ""
         root.pinsError = ""
-        root.rebuild(true)
-      } catch (_) { root.pinsError = "Could not read pins" }
+      } catch (error) {
+        root.history = []
+        root.pins = []
+        root.historyError = String(error)
+        root.pinsError = root.historyError
+      }
+      root.rebuild(true)
+      if (root.reloadPending) Qt.callLater(root.reloadState)
     }
-    onLoadFailed: { root.pins = []; root.pinsError = ""; root.rebuild(true) }
   }
   Process {
     id: storage
@@ -141,8 +145,7 @@ Item {
     stderr: StdioCollector { id: storageErrors }
     onExited: function(code) {
       if (code !== 0) root.errorMessage = storageErrors.text.trim() || "Could not save changes"
-      historyFile.reload()
-      pinsFile.reload()
+      Qt.callLater(root.reloadState)
     }
   }
   PointerMoveGate { id: pointerGate; referenceItem: card }

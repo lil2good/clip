@@ -1,8 +1,11 @@
 import json
-import os
 from pathlib import Path
 import sys
-import tempfile
+from safe_io import atomic_write, read_bytes
+
+MAX_BYTES = 2 * 1024 * 1024
+MAX_ENTRIES = 300
+MAX_STDIN_BYTES = 64 * 1024
 
 
 def normalize(value):
@@ -24,34 +27,48 @@ def key(entry):
     return "image:" + entry["path"] if entry["type"] == "image" else "text:" + entry["text"]
 
 
+def validate_entries(values):
+    if not isinstance(values, list) or len(values) > MAX_ENTRIES:
+        raise ValueError("Expected an array of at most 300 entries")
+    return values
+
+
 def read(path, default):
     try:
-        raw = path.read_bytes()
-        return json.loads(raw), raw
+        raw = read_bytes(path, MAX_BYTES)
     except FileNotFoundError:
         return default, None
+    return validate_entries(json.loads(raw)), raw
 
 
 def update(path, transform):
-    path.parent.mkdir(parents=True, exist_ok=True)
     for _ in range(5):
         values, before = read(path, [])
-        result = transform(values)
-        fd, temporary = tempfile.mkstemp(prefix=".clip-", dir=path.parent)
-        try:
-            with os.fdopen(fd, "w") as stream:
-                json.dump(result, stream, ensure_ascii=False, indent=2)
-                stream.write("\n")
-                stream.flush()
-                os.fsync(stream.fileno())
-            if read(path, [])[1] != before:
-                continue
-            os.replace(temporary, path)
-            return
-        finally:
-            if os.path.exists(temporary):
-                os.unlink(temporary)
+        result = validate_entries(transform(values))
+        data = (json.dumps(result, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+        if len(data) > MAX_BYTES:
+            raise ValueError("Output exceeds byte limit")
+        if read(path, [])[1] != before:
+            continue
+        atomic_write(path, data, max_bytes=MAX_BYTES)
+        return
     raise RuntimeError("History changed repeatedly; please try again")
+
+
+def dump(state):
+    history = read(state / "clipboard-history.json", [])[0]
+    pins = read(state / "clip-pins.json", [])[0]
+    if not all(isinstance(value, str) for value in pins):
+        raise ValueError("Invalid pins file")
+    # Preserve raw history positions used by the stock clipboard commands.
+    return {"history": history, "pins": pins}
+
+
+def read_payload(stream):
+    raw = stream.readline(MAX_STDIN_BYTES + 1)
+    if len(raw) > MAX_STDIN_BYTES:
+        raise ValueError("Mutation input exceeds byte limit")
+    return json.loads(raw)
 
 
 def mutate(state, operation, payload):
@@ -78,7 +95,11 @@ def mutate(state, operation, payload):
 
 if __name__ == "__main__":
     try:
-        mutate(Path.home() / ".local/state/omarchy", sys.argv[1], json.loads(sys.stdin.readline()))
+        state = Path.home() / ".local/state/omarchy"
+        if sys.argv[1] == "dump":
+            print(json.dumps(dump(state), ensure_ascii=False))
+        else:
+            mutate(state, sys.argv[1], read_payload(sys.stdin.buffer))
     except Exception as error:
-        print("Clip could not save: " + str(error), file=sys.stderr)
+        print("Clip storage failed: " + str(error), file=sys.stderr)
         sys.exit(1)

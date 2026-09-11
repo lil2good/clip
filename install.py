@@ -5,6 +5,11 @@ import shutil
 import subprocess
 import time
 
+from safe_io import atomic_write, ensure_directory, read_bytes
+
+MAX_CONFIG_BYTES = 1024 * 1024
+MAX_ASSET_BYTES = 16 * 1024 * 1024
+
 ROOT = Path(__file__).resolve().parent
 PLUGIN = "io.github.tuxclaw.clip"
 HOME_DIR = Path.home()
@@ -23,10 +28,22 @@ def run(*args, show=True):
 
 
 def backup(path):
-    if path.exists():
-        destination = path.with_name(path.name + ".clip-backup-" + STAMP)
-        shutil.copy2(path, destination)
-        REPORT.append("Backup: " + str(destination))
+    try:
+        data = read_bytes(path, MAX_CONFIG_BYTES)
+    except FileNotFoundError:
+        return
+    destination = path.with_name(path.name + ".clip-backup-" + STAMP)
+    atomic_write(destination, data)
+    REPORT.append("Backup: " + str(destination))
+
+
+def install_file(source, target):
+    data = read_bytes(source, MAX_ASSET_BYTES)
+    atomic_write(target, data, mode=source.stat().st_mode & 0o777)
+
+
+def write_text(path, text):
+    atomic_write(path, text.encode("utf-8"))
 
 
 def watchers():
@@ -67,24 +84,24 @@ def main():
         exists = subprocess.run(["git", "show-ref", "--verify", "--quiet", "refs/heads/andy/clip-overlay"], cwd=ROOT).returncode == 0
         run("git", "switch", "andy/clip-overlay") if exists else run("git", "switch", "-c", "andy/clip-overlay")
     destination = HOME_DIR / ".config/omarchy/plugins" / PLUGIN
-    destination.mkdir(parents=True, exist_ok=True)
-    for filename in ("manifest.json", "Overlay.qml", "BarWidget.qml", "Clip.js", "storage.py", "README.md"):
+    ensure_directory(destination)
+    for filename in ("manifest.json", "Overlay.qml", "BarWidget.qml", "Clip.js", "storage.py", "safe_io.py", "README.md"):
         backup(destination / filename)
-        shutil.copy2(ROOT / filename, destination / filename)
-    (destination / "assets").mkdir(exist_ok=True)
+        install_file(ROOT / filename, destination / filename)
+    ensure_directory(destination / "assets")
     for asset in (ROOT / "assets").iterdir():
         if asset.is_file():
             backup(destination / "assets" / asset.name)
-            shutil.copy2(asset, destination / "assets" / asset.name)
+            install_file(asset, destination / "assets" / asset.name)
     applications = HOME_DIR / ".local/share/applications"
     icons = HOME_DIR / ".local/share/icons/hicolor"
     desktop = applications / (PLUGIN + ".desktop")
     icon = icons / "scalable/apps" / (PLUGIN + ".svg")
     for source, target in ((ROOT / "assets" / desktop.name, desktop),
                            (ROOT / "assets/clip.svg", icon)):
-        target.parent.mkdir(parents=True, exist_ok=True)
+        ensure_directory(target.parent)
         backup(target)
-        shutil.copy2(source, target)
+        install_file(source, target)
     if shutil.which("desktop-file-validate"):
         run("desktop-file-validate", str(desktop))
     for command in (("gtk-update-icon-cache", "--force", "--ignore-theme-index", str(icons)),
@@ -104,14 +121,14 @@ def main():
     except subprocess.CalledProcessError as error:
         REPORT.append("Before-tray placement failed: " + error.stderr.strip())
         run("omarchy", "bar", "put", PLUGIN, "--section", "right", "--index", "0")
-    right = json.loads(shell_config.read_text())["bar"]["layout"]["right"]
+    right = json.loads(read_bytes(shell_config, MAX_CONFIG_BYTES).decode("utf-8"))["bar"]["layout"]["right"]
     identifiers = [entry if isinstance(entry, str) else entry["id"] for entry in right]
     assert PLUGIN in identifiers, "Clip bar launcher missing"
     if "omarchy.tray" in identifiers:
         assert identifiers.index(PLUGIN) < identifiers.index("omarchy.tray")
     REPORT.append("bar.layout.right: " + json.dumps(identifiers))
     bindings = HOME_DIR / ".config/hypr/bindings.lua"
-    original = bindings.read_text()
+    original = read_bytes(bindings, MAX_CONFIG_BYTES).decode("utf-8")
     marker = '-- Omarchy Clip\n'
     if marker not in original:
         backup(bindings)
@@ -120,11 +137,11 @@ def main():
             addition += 'hl.unbind("SUPER + SHIFT + V")\n'
         addition += 'o.bind("SUPER + SHIFT + V", "Omarchy Clip", "omarchy-shell shell toggle io.github.tuxclaw.clip")\n'
         addition += 'hl.layer_rule({ match = { namespace = "^omarchy-clip$" }, no_anim = true, animation = "none" })\n'
-        bindings.write_text(original + addition)
+        write_text(bindings, original + addition)
         run("hyprctl", "reload")
         errors = run("hyprctl", "configerrors")
         if errors:
-            bindings.write_text(original)
+            write_text(bindings, original)
             run("hyprctl", "reload")
             run("hyprctl", "configerrors")
             raise RuntimeError("Hyprland errors; restored original bindings: " + errors)
@@ -166,4 +183,4 @@ if __name__ == "__main__":
     try:
         main()
     finally:
-        (ROOT / ".context/validation.md").write_text("# Clip validation\n\n```text\n" + "\n\n".join(REPORT) + "\n```\n")
+        write_text(ROOT / ".context/validation.md", "# Clip validation\n\n```text\n" + "\n\n".join(REPORT) + "\n```\n")
